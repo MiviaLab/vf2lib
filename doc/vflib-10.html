@@ -1,0 +1,207 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<HTML>
+<HEAD>
+ <META NAME="GENERATOR" CONTENT="SGML-Tools 1.0.9">
+ <TITLE>The VFLib Graph Matching Library, version 2.0: Using VFLib: a quick tour : Adding and using node/edge attributes</TITLE>
+ <LINK HREF="vflib-11.html" REL=next>
+ <LINK HREF="vflib-9.html" REL=previous>
+ <LINK HREF="vflib.html#toc3" REL=contents>
+</HEAD>
+<BODY>
+<A HREF="vflib-11.html">Next</A>
+<A HREF="vflib-9.html">Previous</A>
+<A HREF="vflib.html#toc3">Contents</A>
+<HR>
+<H2>3.5 Adding and using node/edge attributes</H2>
+
+<P>Semantic attributes are handled by the Graph class through
+<CODE>void *</CODE> pointers, and so any built-in or user defined type
+can be used for node or edge attributes. 
+<P>The use of pointers has the advantage of making possible to
+manage the attributes efficiently, avoiding unnecessary copies,
+and allowing different graphs to share the memory areas used for
+the attributes. On the other hand, especially in a language like C++ that
+does not support automatic garbage collection, there is the problem
+of the ownership of the pointed data structure: who is responsible
+for allocating the attribute, for cloning it (i.e.
+allocating a new copy of it) when necessary, and for
+deallocating it?
+<P>The easiest answer for the user would be: the Graph class. But this choice
+would have implied excessive limitations to the flexibility of the
+attribute management. 
+<P>For example, in many situations it would be reasonable
+to have the attributes dynamically allocated on the heap, with
+a separated attribute instance for each node/edge. However there are
+cases where only a very limited set of attribute values are possible,
+and so a great memory saving can be obtained by preallocating these values
+(possibly with static allocation) and sharing the pointers among all
+the nodes/edges of the graphs. Giving the Graph class the responsibility for
+the allocation/deallocation of the attributes would imply that only one
+allocation policy must be chosen, at the price of an efficiency loss in the
+cases where this policy is not the best one.
+<P>So, the rules we have followed in the design of the library are:
+<UL>
+<LI> <CODE>ARGLoader</CODE> objects are responsible for allocating the 
+attributes when the graph data is generated or read; the user that
+writes his/her own <CODE>ARGLoader</CODE> is the most indicated person to
+decide which allocation policy is the best. <CODE>ARGLoader</CODE> objects
+should not be concerned with attribute clonation or deallocation; they
+simply pass the pointers to the <CODE>Graph</CODE> object that is built.
+Note that the <CODE>ARGEdit</CODE> class does not perform attribute allocation;
+it simply receives the attribute pointers from the caller.</LI>
+<LI> <CODE>Graph</CODE> objects by default do not deal with attribute
+allocation, clonation or deallocation. However, it is possible to 
+register a node destroyer and an edge destroyer 
+(i.e. an object that knows
+how to deallocate a node/edge attribute)
+within each graph.</LI>
+<LI> Everything else is upon the shoulders of the library user, which has
+to understand when an attribute must be cloned or deallocated, and
+to perform these operations iterating over the nodes and the edges.
+In particular, notice that when multiple graphs are built using the
+same <CODE>ARGLoader</CODE>, it is usually necessary to clone the node/edge
+attributes.</LI>
+</UL>
+<P>In order to avoid the need of pointer casting when dealing with
+attributes, the library provides a template class <CODE>ARGraph&lt;N,E></CODE>,
+derived from <CODE>Graph</CODE>, for graphs with node attributes of type
+<CODE>N</CODE> and edge attributes of type <CODE>E</CODE>.
+<P>How are attributes employed in the matching process? The user can
+provide an object of the graph class with a <EM>node comparator</EM>
+and an <EM>edge comparator</EM>. These are objects implementing
+the <CODE>AttrComparator</CODE> abstract class, which has a <CODE>compatible</CODE>
+method
+taking two attribute pointers, and returning a <CODE>bool</CODE> value that
+is <CODE>false</CODE> if the corresponding nodes or edges are to be 
+considered incompatible and must not be paired in the matching process.
+In this way, the search space can be profitably pruned removing 
+semantically undesirable matchings. 
+Notice that the matching algorithm uses the comparators 
+of the first of the two graphs used to construct the initial state.
+<P>Now let us turn to a practical example. Suppose that our nodes
+must represent points in a plane; we will associate with each node
+an attribute holding its cartesian coordinates. For simplicity,
+the edges will have no attributes. Suppose we have
+a class <CODE>Point</CODE> to represent the node attributes:
+<P>
+<BLOCKQUOTE><CODE>
+<HR>
+<PRE>
+
+class Point
+  { public:
+      float x, y;
+      Point(float x, float y)
+        { this->x=x;
+          this->y=y;
+        }
+  };
+</PRE>
+<HR>
+</CODE></BLOCKQUOTE>
+<P>Now, if we want to allocate the attributes on heap, we need 
+a destroyer class, which is an implementation of the abstract
+class <CODE>AttrDestroyer</CODE>. In our example, the destroyer could
+be:
+<P>
+<BLOCKQUOTE><CODE>
+<HR>
+<PRE>
+class PointDestroyer: public AttrDestroyer
+  { public:
+       virtual void destroy(void *p)
+         { delete p;
+         }
+  };
+</PRE>
+<HR>
+</CODE></BLOCKQUOTE>
+<P>We will also need a comparator class for testing two points
+for compatibility during the matching process. A comparator
+is an implementation of the abstract class <CODE>AttrComparator</CODE>.
+Suppose that we consider two points to be compatible if their euclidean
+distance is less than a threshold:
+<BLOCKQUOTE><CODE>
+<HR>
+<PRE>
+
+class PointComparator: public AttrComparator
+{ private:
+    double threshold;
+
+public:
+  PointComparator(double thr)
+    { threshold=thr;
+    }
+  virtual bool compatible(void *pa, void *pb)
+    { Point *a = (Point *)pa;
+      Point *b = (Point *)pb;
+      double dist = hypot(a->x - b->x, a->y - b->y);
+           // Function hypot is declared in &lt;math.h>
+  
+      return dist &lt; threshold;
+    }
+};
+</PRE>
+<HR>
+</CODE></BLOCKQUOTE>
+<P>We can build two graphs with these attributes using the <CODE>ARGEdit</CODE> class:
+<P>
+<BLOCKQUOTE><CODE>
+<HR>
+<PRE>
+int main()
+  { ARGEdit ed1, ed2;
+
+    ed1.InsertNode( new Point(10.0, 7.5) );
+    ed1.InsertNode( new Point(2.7, -1.9) );
+    ed1.InsertEdge(1, 0, NULL);
+    // ... and so on ...
+
+    ARGraph&lt;Point, void> g1(&amp;ed1);
+    ARGraph&lt;Point, void> g2(&amp;ed2);
+
+
+    // Install the attribute destroyers
+    g1.SetNodeDestroyer(new PointDestroyer());
+    g2.SetNodeDestroyer(new PointDestroyer());
+
+    // Install the attribute comparator
+    // This needs to be done only on graph g1.
+    double my_threshold=0.1; 
+    g1.SetNodeComparator(new PointComparator(my_threshold));
+
+    VFSubState s0(&amp;g1, &amp;g2);
+
+    // Now matching can begin...
+</PRE>
+<HR>
+</CODE></BLOCKQUOTE>
+<P>Notice that the attribute destroyers and comparators
+have to be allocated on heap with <CODE>new</CODE>; once they are installed
+they are owned by the graph, which will <CODE>delete</CODE>
+them when they are no longer needed. So it is an
+error to share a destroyer or a comparator across
+graphs, as is to use a static or automatic variable
+for this purpose.
+<P><B>Historical note:</B>
+Previous versions of the library (before 2.0.5) used simple
+functions instead of full objects for deallocating or comparing
+attributes. These functions were installed using the
+<CODE>SetNodeDestroy</CODE>, <CODE>SetEdgeDestroy</CODE>, <CODE>SetNodeCompat</CODE>
+and <CODE>SetEdgeCompat</CODE> methods.
+While these methods are still supported for backward compatibility,
+we warmly recommend to use the new object-oriented approach, which
+provides greater flexibility. For example, with the old
+approach it would have been
+quite difficult to obtain something equivalent to a point
+comparator; the threshold would have had to be either a 
+compile-time costant or a global variable, with obvious drawbacks.
+<P>
+<P>
+<HR>
+<A HREF="vflib-11.html">Next</A>
+<A HREF="vflib-9.html">Previous</A>
+<A HREF="vflib.html#toc3">Contents</A>
+</BODY>
+</HTML>

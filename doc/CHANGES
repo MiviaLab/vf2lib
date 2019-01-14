@@ -1,0 +1,100 @@
+------------------------------------------------------------------------
+From version 2.0.5 to version 2.0.6 [18 Jan 2002]
+* Fixed the header files vf_state.h and vf_sub_state.h.
+    The problem was that both these headers defined the same
+    constants used to encode the node flags. This prevented including
+    both the headers in the same source file. The problem was
+    pointed out by Keishi Sadanami.
+    Now the mentioned constants have been moved to inside the
+    private part of the corresponding classes (VFState and VFSubState),
+    where they logically belong.
+
+------------------------------------------------------------------------
+From version 2.0.4 to version 2.0.5 [17 Dec 2001]
+* Changed the way attributes are destroyed or compared in ARGraph_impl.
+    Instead of functions, now there are instances of abstract classes
+    AttrDestroyer and AttrComparator which are responsible for 
+    deallocating or comparing node/edge attributes. The methods
+    SetNodeDestroy/SetEdgeDestroy and SetNodeCompat/SetEdgeCompat
+    have been superseded by the new SetNodeDestroyer/SetEdgeDestroyer
+    and SetNodeComparator/SetEdgeComparator (although the former
+    are retained for compatibility with previous versions).
+      The advantage in the new scheme is that the objects may
+    store some context information without the need to resort to
+    global variables. For example, an AttrDestroyer may hold a 
+    reference to a memory pool to which  the destroyed attribute
+    has to be given back in order for it to be recycled.
+    The documentation has been changed accordingly.
+
+------------------------------------------------------------------------
+From version 2.0.3 to version 2.0.4 [7 Nov 2001]
+* Fixed a bug in argraph.cc, for class ARGraph_impl
+    The bug was in the implementation of method SetEdgeAttr,
+        causing it to enter a non-terminating loop; also, this
+	method was lacking the code to update the in_attr field,
+	thus leaving the graph in an inconsistent state.
+
+* Changed reading methods used in argraph.cc, for class BinaryGraphLoader
+    The BinaryGraphLoader class used the istream::get(char &) method
+        for reading a byte. Now this method is deprecated, and
+	recent compilers (e.g. VC++6.0) do not recognize it. 
+	Thus, now the int istream::get() method is used instead.
+
+* Added a missing define in xsubgraph.h
+    The xsubgraph.h header file contains an #ifndef to prevent multiple
+        inclusions; however, the corresponding #define was missing, 
+	making it possible to have multiple inclusions of the file.
+	Anyway, this was more an inconsistency than an error, since
+	the header file only contains a function prototype, and
+	multiple inclusions cannot cause any harm.
+
+------------------------------------------------------------------------
+From version 2.0.2 to version 2.0.3 [16 Oct 2001]
+* Fixed a bug in argraph.cc, for class ARGraph_impl
+    The bug, reported by Brian Kelley and L. Shyamal, was in the
+        destructor, and caused a memory leak when a graph
+        was deallocated.
+
+* Changed headers used for C++ iostream library
+    All the references to <iostream.h> and <strstream.h> have
+        been replaced by <iostream> and <strstream>, conforming to
+	the C++ standard. This could break things on older
+	compilers, but can make newer ones happier (especially 
+	Visual C++).
+
+* Fixed non-standard use of new
+    As reported by Brian Kelley, VisualC++ does not like
+        the parentheses in constructs like:
+	    new (byte*)[n]
+        Those parentheses have been removed wherever they
+	occurred in the library code.
+
+------------------------------------------------------------------------
+From version 2.0.1 to version 2.0.2 [3 Sep 2001]
+* Fixed a bug in argraph.cc, for class argraph_impl
+    The bug, reported by Thomas Mailund, was in the destructor,
+	which called the edge-attribute destroy function instead of the
+	node-attribute one.
+
+* Fixed an error in the documentation
+    Examples in the quick tour (sec. 3.1 and 3.2) used the costructor of 
+	class Graph passing an ARGLoader object, instead of a pointer to an 
+	ARGLoader as required by the constructor. This error was reported 
+	by Torsten Schindler.
+
+* Removed the file xistrstream.h and the xistrstream class
+    This class was introduced to fix a bug in gcc2.7.2; however it 
+	introduced a dependency from the iostream library
+	implementation that prevented compilation on non-GCC compilers.
+
+* Added the VF2MonoState class
+    This class, which was cited in the documentation but not
+    included in the library, performs monomorphism matching using
+	the VF2 algorithm. The corresponding files are vf2_mono_state.h and
+	vf2_mono_state.cc.
+
+------------------------------------------------------------------------
+From version 2.0 to version 2.0.1 [5 Jun 2001]
+* Fixed a bug in argloader.cc, for class BinaryGraphLoader
+
+
