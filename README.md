@@ -1,7 +1,7 @@
 # vf2lib
-The library, writte in ANSI-C, contatins the implementation  of the well-known algorithms to solve graph and subgraph isomorphism: VF, VF2 and Ullmann.
+The VFLib graph matching library is a graph matching library which provides several algorithms for graph isomorphism, graph-subgraph isomorphism and graph monomorphism. The library is an efficient implementation of the VF2 graph matching algorithm, currently among the fastest ones, able to process very huge graphs due to its linear memory complexity. The library is written in C++, and can be easily adapted to use different formats for the graphs, and different types of attributes.
 
-The library contains solvers for: 
+The library contains solvers for the following mathing problems: 
 * Graph Isomorphism
 * Subgraph Isomorphism
 * Subgraph Monomorphism (VF2 Only)
